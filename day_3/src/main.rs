@@ -112,12 +112,11 @@ fn find_group_badge(group:  &Vec<String>) -> Option<char> {
     if group.len() <= 1 {
         return None;
     }
-    let initial_set: HashSet<char> = HashSet::from_iter(group[0].chars());
-    let mut common_set: HashSet<char> = initial_set.intersection(&group[1].chars().collect()).cloned().collect();
-    for i in 2..group.len() {
-        common_set = common_set.intersection(&group[i].chars().collect()).cloned().collect();
+    let mut set: HashSet<char> = HashSet::from_iter(group[0].chars());
+    for i in 1..group.len() {
+        set = set.intersection(&group[i].chars().collect()).cloned().collect();
     }
-    common_set.drain().last()
+    set.drain().last()
 }
 
 #[cfg(test)]
