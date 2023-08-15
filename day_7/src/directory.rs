@@ -1,11 +1,12 @@
-use std::{collections::VecDeque, cell::RefCell, rc::Rc};
+use std::{collections::VecDeque, cell::RefCell, rc::{Weak, Rc}, borrow::BorrowMut};
 
-struct Directory {
-    value: i32,
-    name: String,
-    parent: Rc<RefCell<Directory>>,
-    children: Vec<Directory>,
+pub struct Directory {
+    pub value: i32,
+    pub name: String,
+    pub parent: Weak<RefCell<Directory>>,
+    pub children: Vec<Directory>,
 }
+
 
 
 impl Directory {
@@ -13,7 +14,7 @@ impl Directory {
         if self.value == value {
             return Some(self)
         }
-
+        
         for child in &self.children {
             return child.dfs(value)
         }
@@ -55,5 +56,13 @@ impl Directory {
                 queue.push_back(&child);
             }
         }
+    }
+
+    fn sum_children(self: &Self) -> i32 {
+        let mut sum = 0;
+        for child in &self.children {
+            sum += child.value;
+        }
+        sum
     }
 }
