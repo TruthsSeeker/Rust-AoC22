@@ -74,3 +74,11 @@ impl Directory {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn test_propagate_value() {
+        assert!(true)
+    }
+}
