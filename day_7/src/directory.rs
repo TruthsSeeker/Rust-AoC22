@@ -1,10 +1,11 @@
-use std::{collections::{VecDeque, HashMap}, cell::{Cell, RefCell}, rc::Weak};
+use std::{collections::{VecDeque, HashMap}, cell::{Cell, RefCell}, rc::Weak, rc::Rc};
 
+#[derive(Clone)]
 pub struct Directory {
     pub value: usize,
     pub name: String,
     pub parent: Weak<RefCell<Directory>>,
-    pub children: Vec<Directory>,
+    pub children: HashMap<String, Rc<RefCell<Directory>>>,
     pub files: HashMap<String, usize>
 }
 
@@ -15,11 +16,11 @@ impl Directory {
         if self.value == value {
             return Some(self)
         }
-        
-        for child in &self.children {
-            return child.dfs(value)
+        let mut result = None;
+        for (_, child) in &self.children {
+            result = child.borrow().dfs(value);
         }
-        None
+        result
     }
 
     fn bfs(self: &Self, value: usize) -> Option<&Directory> {
@@ -31,8 +32,8 @@ impl Directory {
                 return Some(node)
             }
 
-            for child in &node.children {
-                queue.push_back(&child)
+            for (_, child) in &node.children {
+                queue.push_back(&child.borrow())
             }
         }
         None
@@ -41,8 +42,8 @@ impl Directory {
     fn depth_first_traversal(self: &Self, lambda: fn(&usize) ) {
         lambda(&self.value);
 
-        for child in &self.children {
-            child.depth_first_traversal(lambda);
+        for (_, child) in &self.children {
+            child.borrow().depth_first_traversal(lambda);
         }
     }
 
@@ -53,16 +54,17 @@ impl Directory {
         while let Some(node) = queue.pop_front() {
             lambda(&node.value);
 
-            for child in &node.children {
-                queue.push_back(&child);
+            for (_, child) in &node.children {
+        
+                queue.push_back(&child.clone().borrow());
             }
         }
     }
 
     fn sum_children(self: &Self) -> usize {
         let mut sum = 0;
-        for child in &self.children {
-            sum += child.value;
+        for (_, child) in &self.children {
+            sum += child.borrow().value;
         }
         sum
     }
@@ -73,12 +75,18 @@ impl Directory {
             parent.borrow_mut().propagate_value(value);
         }
     }
+    pub fn get_root(self: &Self) -> Directory {
+        let mut root = self.clone();
+        while let Some(parent) = root.parent.upgrade() {
+            root = parent.borrow().clone();
+        }
+        root
+    }
 }
 
 #[cfg(test)]
 mod test {
     #[test]
     fn test_propagate_value() {
-        assert!(true)
     }
 }

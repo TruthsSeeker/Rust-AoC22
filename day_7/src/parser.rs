@@ -12,22 +12,24 @@ pub enum LineType {
 
 pub struct Parser<'a> {
     contents: VecDeque<&'a str>,
-    cursor: Rc<RefCell<Directory>>,
+    root: Rc<RefCell<Directory>>,
+    pub cursor: Rc<RefCell<Directory>>,
     name: &'a str,
 }
 
 impl Parser<'_> {
-    fn new<'a>(contents: &'a str) -> Parser<'a> {
-
+    pub fn new<'a>(contents: &'a str) -> Parser<'a> {
+        let directory = Directory {
+            value: 0,
+            name: "root".to_string(),
+            parent: Weak::new(),
+            children: HashMap::new(),
+            files: HashMap::new(),
+        };
         let parser: Parser<'a> = Parser {
             contents: contents.lines().collect::<VecDeque<&str>>(),
-            cursor: Rc::new(RefCell::new(Directory {
-                value: 0,
-                name: "root".to_string(),
-                parent: Weak::new(),
-                children: vec![],
-                files: HashMap::new(),
-            })),
+            root: Rc::new(RefCell::new(directory.clone())),
+            cursor: Rc::new(RefCell::new(directory)),
             name: "root",
         };
         parser
@@ -56,7 +58,8 @@ impl Parser<'_> {
         iter.next().unwrap()
     }
     
-    pub fn process_ls<'a>(self: &mut Self) {
+    fn process_ls<'a>(self: &mut Self) {
+        self.contents.pop_front(); // remove $ ls
         let mut files = HashMap::new();
         while let Some(line) = self.contents.pop_front() {
             match self.parse_line_type(line) {
@@ -68,45 +71,73 @@ impl Parser<'_> {
                     let (size, file) = self.parse_file(line);
                     files.insert(file.to_string(), size);
                 },
-                LineType::Directory => continue,
+                LineType::Directory => {
+                    let name = self.parse_dir_name(line);
+                    let directory = Directory {
+                        value: 0,
+                        name: name.to_string(),
+                        parent: Rc::downgrade(&self.cursor),
+                        children: HashMap::new(),
+                        files: HashMap::new(),
+                    };
+                    self.cursor.borrow_mut().children.insert(name.to_string(), Rc::new(RefCell::new(directory)));
+                },
             };
             
         }
         let value = files.values().sum();
-        let directory = Directory {
-            value: value ,
-            name: self.name.to_string(),
-            parent: Rc::downgrade(&self.cursor),
-            children: vec![],
-            files: files,
-        };
-        self.cursor.borrow_mut().children.push(directory);
-        self.cursor.borrow_mut().propagate_value(value);
+        let mut directory = self.cursor.borrow_mut();
+        directory.files = files;
+        directory.propagate_value(value);
     }
 
-    pub fn process_cd(self: &mut Self) {
+    fn process_cd(self: &mut Self) {
         if let Some(line) = self.contents.pop_front() {
-            let name = self.parse_dir_name(line);
-            match name {
-                ".." => {
-                    if let Some(parent) = self.cursor.clone().borrow().parent.upgrade() {
-                        self.cursor = parent;
+            if let Some(name) = line.split_whitespace().nth(2) {
+                match name {
+                    ".." => {
+                        if let Some(parent) = self.cursor.clone().borrow().parent.upgrade() {
+                            self.cursor = parent;
+                        }
+                    },
+                    _ => {
+                        if let Some(child) = self.cursor.clone().borrow().children.get(name) {
+                            self.name = name;
+                            self.cursor = Rc::new(RefCell::new(child.borrow().clone()));
+                        }
                     }
-                },
-                _ => {
-                    self.name = name;
                 }
             }
         }
     }
 
+    fn process_command(self: &mut Self) {
+        if let Some(line) = self.contents.front() {
+            match self.parse_line_type(line) {
+                LineType::Command => {
+                    if let Some(command) = line.split_whitespace().nth(1) {
+                        match command {
+                            "ls" => self.process_ls(),
+                            "cd" => self.process_cd(),
+                            _ => panic!("Unknown command"),
+                        }
+                    }
+                }
+                _ => panic!("Expected command"),
+            }
+        }
+    }
+
+    pub fn parse(self: &mut Self) {
+        while !self.contents.is_empty() {
+            self.process_command();
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::rc::Weak;
 
-    use crate::parser;
 
     use super::*;
 
@@ -136,12 +167,34 @@ mod tests {
         let test_data = load_file("data/test.txt").unwrap();
         let mut contents = test_data.lines().collect::<VecDeque<&str>>();
         contents.pop_front(); // remove $ cd /
-        contents.pop_front(); // remove $ ls
         let truncated_contents = contents.into_iter().collect::<Vec<&str>>().join("\n");
         let mut parser = Parser::new(&truncated_contents);
         parser.process_ls();
-        assert_eq!(parser.cursor.borrow().children.len(), 1);
+        assert_eq!(parser.cursor.borrow().children.len(), 2);
         assert_eq!(parser.cursor.borrow().value, 23352670);
+    }
+
+    #[test]
+    fn test_process_cd() {
+        let test_data = load_file("data/test.txt").unwrap();
+        let mut contents = test_data.lines().collect::<VecDeque<&str>>();
+        contents.pop_front(); // remove $ cd /
+        let truncated_contents = contents.into_iter().collect::<Vec<&str>>().join("\n");
+        let mut parser = Parser::new(&truncated_contents);
+        parser.process_ls();
+        parser.process_cd();
+        assert_eq!(parser.cursor.borrow().name, "a");
+        assert_eq!(parser.cursor.borrow().value, 0);
+        
+    }
+
+    #[test]
+    fn test_parse() {
+        let test_data = load_file("data/test.txt").unwrap();
+        let mut parser = Parser::new(&test_data);
+        parser.parse();
+        let root = parser.cursor.borrow().get_root();
+        assert_eq!(root.value, 48381165);
     }
 }
 

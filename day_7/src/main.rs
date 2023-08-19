@@ -3,14 +3,32 @@ mod directory;
 pub mod parser;
 mod utils;
 use directory::Directory;
+use parser::Parser;
 
 
 
 
 fn main() {
-    let mut cursor: Option<&mut Directory> = None;
-
+    let mut file = File::open("data/input.txt").unwrap();
+    let mut contents = String::new();
+    file.read_to_string(&mut contents).unwrap();
+    
+    let mut parser = Parser::new(&contents);
+    parser.parse();
 }
 
-
-
+#[cfg(test)]
+mod test {
+    use super::*;
+    
+    #[test]
+    fn test() {
+        let mut file = File::open("data/test.txt").unwrap();
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).unwrap();
+        
+        let mut parser = Parser::new(&contents);
+        parser.parse();
+        assert_eq!(parser.cursor.borrow().value, 48381165);
+    }
+}
