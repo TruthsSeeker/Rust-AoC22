@@ -83,8 +83,7 @@ impl Parser<'_> {
                         children: vec![],
                         files: HashMap::new(),
                     };
-                    let mut parent = self.arena[self.cursor].clone();
-                    parent.children.push(directory.idx);
+                    self.arena[self.cursor].children.push(directory.idx);
                     // match self.arena.get(self.cursor) {
                     //     Some(dir) => dir.children.push(directory.idx),
                     //     None => panic!("Directory not found"),
@@ -97,7 +96,9 @@ impl Parser<'_> {
         let value = files.values().sum();
         match self.arena.get_mut(self.cursor) {
             Some(dir) => {
-                dir.files = files;
+                files.iter().for_each(|(file, size)| {
+                    dir.files.insert(file.to_string(), *size);
+                });
                 self.propagate_value(value);
             },
             None => panic!("Directory not found"),
@@ -165,16 +166,17 @@ impl Parser<'_> {
     }
     
     pub fn propagate_value(self: &mut Self, value: usize) {
-        match self.arena.get_mut(self.cursor) {
+        let mut cursor = self.cursor;
+        match self.arena.get_mut(cursor) {
             Some(directory) => directory.size += value,
             None => panic!("Directory not found"),
         }
-        while let Some(parent) = self.arena[self.cursor].parent {
+        while let Some(parent) = self.arena[cursor].parent {
             match self.arena.get_mut(parent) {
                 Some(directory) => directory.size += value,
                 None => break,
             }
-            self.cursor = parent;
+            cursor = parent;
         }
     }
     
