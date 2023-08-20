@@ -29,6 +29,6 @@ mod test {
         
         let mut parser = Parser::new(&contents);
         parser.parse();
-        assert_eq!(parser.cursor.borrow().value, 48381165);
+        assert_eq!(parser.get_directory(None).unwrap().size, 48381165);
     }
 }
