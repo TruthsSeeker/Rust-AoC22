@@ -11,12 +11,10 @@ pub enum LineType {
 
 pub struct Parser<'a> {
     contents: VecDeque<&'a str>,
-    // name: &'a str,
     pub arena: Vec<Directory<'a>>,
     cursor: usize,
 }
 
-//TODO: update directories as the file structure gets parsed
 
 impl Parser<'_> {
     pub fn new<'a>(contents: &'a str) -> Parser<'a> {
@@ -30,7 +28,6 @@ impl Parser<'_> {
         };
         let parser: Parser<'a> = Parser {
             contents: contents.lines().collect::<VecDeque<&str>>(),
-            // name: "root",
             cursor: 0,
             arena: vec![directory]
         };
@@ -84,10 +81,7 @@ impl Parser<'_> {
                         files: HashMap::new(),
                     };
                     self.arena[self.cursor].children.push(directory.idx);
-                    // match self.arena.get(self.cursor) {
-                    //     Some(dir) => dir.children.push(directory.idx),
-                    //     None => panic!("Directory not found"),
-                    // }
+
                     self.arena.push(directory)
                 },
             };
@@ -112,14 +106,12 @@ impl Parser<'_> {
                     ".." => {
                         if let Some(parent) = self.arena[self.cursor].parent {
                             self.cursor = parent;
-                            // self.name = self.arena[self.cursor].name;
                         }
                     },
                     _ => {
                         if let Some(dir) = self.find_among(
                             &self.arena[self.cursor].children, 
                             |idx| self.arena[idx].name == name) {
-                            // self.name = name;
                             self.cursor = dir.idx;
                         }
                     }
@@ -239,7 +231,6 @@ mod tests {
         let truncated_contents = contents.into_iter().collect::<Vec<&str>>().join("\n");
         let mut parser = Parser::new(&truncated_contents);
         parser.process_ls();
-        // assert_eq!(parser.arena[0].children.len(), 2);
         assert_eq!(parser.arena[0].size, 23352670);
     }
 

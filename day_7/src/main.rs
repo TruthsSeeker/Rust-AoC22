@@ -15,10 +15,20 @@ fn main() {
     
     let mut parser = Parser::new(&contents);
     parser.parse();
-    println!("{}", parser.get_root().unwrap().size);
+    let total_size = parser.get_root().unwrap().size;
+    println!("{}", total_size);
     let directories = parser.find_directories(|directory| directory.size <= 100000);
     let sum = directories.iter().fold(0, |acc, directory| acc + directory.size);
     println!("{}", sum);
+    
+    let min_size_to_delete = 30000000 - (70000000 - total_size);
+    let mut smallest_candidate = usize::max_value();
+    parser.arena.iter().for_each(|directory| {
+        if directory.size >= min_size_to_delete && directory.size < smallest_candidate {
+            smallest_candidate = directory.size;
+        }
+    });
+    println!("delete: {}", smallest_candidate);
 }
 
 #[cfg(test)]
