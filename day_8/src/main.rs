@@ -1,4 +1,4 @@
-use std::{fs::File, io::Read, collections::VecDeque};
+use std::{fs::File, io::Read};
 
 fn main() {
     let input = load_file("data/input.txt").unwrap();
