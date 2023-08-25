@@ -1,4 +1,4 @@
-use std::{fs::File, io::Read};
+use std::{fs::File, io::Read, collections::VecDeque};
 
 fn main() {
     let input = load_file("data/input.txt").unwrap();
@@ -95,82 +95,78 @@ fn is_visible_from_west(forest: Vec<Vec<u32>>, tree: (u32, u32)) -> bool {
 }
 
 fn los_north(forest: Vec<Vec<u32>>, tree: (u32, u32)) -> u32 {
-    let mut los = 1;
     let (x, y) = tree;
-    let height = forest[x as usize][y as usize];
-    let mut max = 0;
-    for i in (0..x).rev() {
-        let current = forest[i as usize][y as usize];
-        if current >= height && current <= max {
-            return los;
-        }
+    if x == 0 {
+        return 0;
+    }
+    let mut los = 0;
+    let height: u32 = forest[x as usize][y as usize];
+    let range: Vec<u32> = (0..x).rev().collect();
+    for i in range {
         los += 1;
-        if current > max {
-            max = current;
+        let current = forest[i as usize][y as usize];
+        if current >= height {
+            return los;
         }
     }
     los
 }
 
 fn los_south(forest: Vec<Vec<u32>>, tree: (u32, u32)) -> u32 {
-    let mut los = 1;
     let (x, y) = tree;
+    if x == forest.len() as u32 - 1 {
+        return 0;
+    }
+    let mut los = 0;
     let height = forest[x as usize][y as usize];
-    let mut max = 0;
-    for i in x+1..forest[x as usize].len() as u32 {
-        let current = forest[i as usize][y as usize];
-        if current >= height && current <= max {
-            return los;
-        }
+    let range: Vec<u32> = (x+1..forest.len() as u32).collect();
+    for i in range {
         los += 1;
-        if current > max {
-            max = current;
+        let current = forest[i as usize][y as usize];
+        if current >= height {
+            return los;
         }
     }
     los
 }
 
 fn los_east(forest: Vec<Vec<u32>>, tree: (u32, u32)) -> u32 {
-    let mut los = 1;
     let (x, y) = tree;
+    if y == forest.len() as u32 - 1 {
+        return 0;
+    }
+    let mut los = 0;
     let height = forest[x as usize][y as usize];
-    let mut max = 0;
-    for i in y+1..forest.len() as u32 {
+    let range: Vec<u32> = (y+1..forest.len() as u32).collect();
+    for i in range {
+        los += 1;
         let current = forest[x as usize][i as usize];
         if current >= height {
             return los;
-        }
-        los += 1;
-        if current > max {
-            max = current;
         }
     }
     los
 }
 
 fn los_west(forest: Vec<Vec<u32>>, tree: (u32, u32)) -> u32 {
-    let mut los = 0;
     let (x, y) = tree;
+    if y == 0 {
+        return 0;
+    }
+    let mut los = 0;
     let height = forest[x as usize][y as usize];
-    let mut max = 0;
-    for i in (0..y).rev() {
+    let range: Vec<u32> = (0..y).rev().collect();
+    for i in range {
+        los += 1;
         let current = forest[x as usize][i as usize];
         if current >= height {
             return los;
-        }
-        los += 1;
-        if current > max {
-            max = current;
         }
     }
     los
 }
 
 fn calculate_los(forest: Vec<Vec<u32>>, tree: (u32, u32)) -> u32 {
-    let (x, y) = tree;
-    if x == 0 || y == 0 || x + 1 == forest.len() as u32 || y + 1 == forest[x as usize].len() as u32 {
-        return 0;
-    }
     los_north(forest.clone(), tree) *
     los_south(forest.clone(), tree) *
     los_east(forest.clone(), tree) *
