@@ -6,6 +6,10 @@ mod utils;
 fn main() {
     let file = load_file("data/input.txt").unwrap();
     let commands = file.split("\n").collect::<Vec<&str>>();
+    part1(commands.clone());
+}
+
+fn part1(commands: Vec<&str>) {
     let mut tail_positions = HashSet::new();
     tail_positions.insert((0, 0));
     let mut head = (0, 0);
