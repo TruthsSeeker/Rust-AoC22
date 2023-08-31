@@ -7,6 +7,7 @@ fn main() {
     let file = load_file("data/input.txt").unwrap();
     let commands = file.split("\n").collect::<Vec<&str>>();
     part1(commands.clone());
+    part2(commands.clone());
 }
 
 fn part1(commands: Vec<&str>) {
@@ -14,11 +15,23 @@ fn part1(commands: Vec<&str>) {
     tail_positions.insert((0, 0));
     let mut head = (0, 0);
     let mut tail = (0, 0);
+    let mut rope = vec![head, tail];
     for command in commands {
         let parsed_command = parse_command(command);
-        process_command(parsed_command, &mut head, &mut tail, &mut tail_positions);
+        process_command(parsed_command, &mut rope, &mut tail_positions);
     }
-    println!("{}", tail_positions.len());
+    println!("Part 1 tail positions: {}", tail_positions.len());
+}
+
+fn part2(commands: Vec<&str>) {
+    let mut tail_positions = HashSet::new();
+    tail_positions.insert((0, 0));
+    let mut rope: Vec<(i32, i32)> = vec![(0, 0); 10];
+    for command in commands {
+        let parsed_command = parse_command(command);
+        process_command(parsed_command, &mut rope, &mut tail_positions);
+    }
+    println!("Part 2 tail positiions: {}", tail_positions.len());
 }
 
 #[derive(Debug, PartialEq)]
@@ -49,14 +62,21 @@ fn parse_command(command: &str) -> (Direction, i32) {
     (direction, distance)
 }
 
-fn process_command(command: (Direction, i32), head:&mut (i32, i32), tail: &mut (i32, i32), tail_positions: &mut HashSet<(i32, i32)>) {
+fn process_command(command: (Direction, i32), rope: &mut Vec<(i32, i32)>, tail_positions: &mut HashSet<(i32, i32)>) {
     let (direction, times) = command;
     for _ in 0..times {
-        *head = move_head(&direction, head);
-        let distance = calculate_distance(head, tail);
-        if is_tail_move_required(distance) {
-            *tail = move_tail(head, tail);
-            tail_positions.insert(*tail);
+        rope[0] = move_head(&direction, &rope[0]);
+        for knot in 0..rope.len() - 1 {
+            let head = rope[knot];
+            let mut tail = rope[knot + 1];
+            let distance = calculate_distance(&head, &tail);
+            if is_tail_move_required(distance) {
+                tail = move_tail(&head, &tail);
+                rope[knot + 1] = tail;
+                if knot == rope.len() - 2 {
+                    tail_positions.insert(tail);
+                }
+            }
         }
     }
 }
