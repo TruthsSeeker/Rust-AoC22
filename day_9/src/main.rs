@@ -1,5 +1,60 @@
+use std::collections::HashSet;
+
+use utils::load_file;
+mod utils;
+
 fn main() {
-    println!("Hello, world!");
+    let file = load_file("data/input.txt").unwrap();
+    let commands = file.split("\n").collect::<Vec<&str>>();
+    let mut tail_positions = HashSet::new();
+    tail_positions.insert((0, 0));
+    let mut head = (0, 0);
+    let mut tail = (0, 0);
+    for command in commands {
+        let parsed_command = parse_command(command);
+        process_command(parsed_command, &mut head, &mut tail, &mut tail_positions);
+    }
+    println!("{}", tail_positions.len());
+}
+
+#[derive(Debug, PartialEq)]
+enum Direction {
+    Up,
+    Down,
+    Left,
+    Right
+}
+
+impl Direction {
+    fn from_char(c: char) -> Direction {
+        match c {
+            'U' => Direction::Up,
+            'D' => Direction::Down,
+            'L' => Direction::Left,
+            'R' => Direction::Right,
+            _ => panic!("Invalid direction")
+        }
+    }
+}
+
+fn parse_command(command: &str) -> (Direction, i32) {
+    let mut chars = command.chars();
+    let direction = Direction::from_char(chars.next().unwrap_or(' '));
+    chars.next(); // skip space
+    let distance = chars.as_str().parse::<i32>().unwrap();
+    (direction, distance)
+}
+
+fn process_command(command: (Direction, i32), head:&mut (i32, i32), tail: &mut (i32, i32), tail_positions: &mut HashSet<(i32, i32)>) {
+    let (direction, times) = command;
+    for _ in 0..times {
+        *head = move_head(&direction, head);
+        let distance = calculate_distance(head, tail);
+        if is_tail_move_required(distance) {
+            *tail = move_tail(head, tail);
+            tail_positions.insert(*tail);
+        }
+    }
 }
 
 // a distance of of > 2.0_f32.sqrt() requires the tail to move because 
@@ -36,10 +91,28 @@ fn move_tail(head: &(i32, i32), tail: &(i32, i32)) -> (i32, i32) {
     (x_tail_new, y_tail_new)
 }
 
+fn move_head(direction: &Direction, head: &(i32, i32)) -> (i32, i32) {
+    let (x_head, y_head) = head;
+    match direction {
+        Direction::Up => (*x_head, *y_head + 1),
+        Direction::Down => (*x_head, *y_head - 1),
+        Direction::Left => (*x_head - 1, *y_head),
+        Direction::Right => (*x_head + 1, *y_head)
+    }
+}
+
 #[cfg(test)]
 
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_parse_command() {
+        let command = "U 2";
+        let (direction, distance) = parse_command(command);
+        assert_eq!(direction, Direction::Up);
+        assert_eq!(distance, 2);
+    }
 
     #[test]
     fn test_calculate_distance() {
