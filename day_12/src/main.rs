@@ -22,8 +22,8 @@ fn main() {
         map: height_map,
         came_from: HashMap::new()
     };
-    let path = pathfinder.a_star().unwrap_or(vec![]);
-    println!("Path length: {}", path.len());
+    let path = pathfinder.a_star().unwrap_or(vec![0]);
+    println!("Path length: {}", path.len() - 1);
 }
 
 fn load_data(path: &str) -> Result<String, Box<dyn Error>> {

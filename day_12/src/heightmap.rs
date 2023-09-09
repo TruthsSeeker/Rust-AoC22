@@ -68,7 +68,7 @@ impl HeightMap {
 
     pub(crate) fn evaluate_neighbor(&mut self, node: usize, candidate: usize, height: i32) {
         let candidate_height = self.arena[candidate].height as i32;
-        if (candidate_height - height).abs() <= 1 {
+        if candidate_height - height <= 1 {
             self.arena[node].add_neighbor(candidate);
         }
     }
