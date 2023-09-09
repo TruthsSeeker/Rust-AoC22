@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct HeightMap {
     pub(crate) arena: Vec<Node>,
     pub(crate) start: usize,
@@ -74,7 +74,7 @@ impl HeightMap {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Node {
     pub(crate) x: usize,
     pub(crate) y: usize,
