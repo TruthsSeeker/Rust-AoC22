@@ -1,4 +1,9 @@
-use std::{fs::File, error::Error, io::Read};
+use std::{fs::File, error::Error, io::Read, collections::{HashMap, HashSet, BinaryHeap}, cmp::Reverse};
+
+mod heightmap;
+use heightmap::Node;
+
+use crate::heightmap::HeightMap;
 
 fn main() {
     println!("Hello, world!");
@@ -8,10 +13,17 @@ fn main() {
     };
     let map = parse_height_map(&data);
     let height_map = HeightMap::new(map);
-    println!("Data: {}", data); 
+    println!("Data:\n{}", data); 
     println!("Start: {} {:?}", height_map.start, height_map.arena[height_map.start]);
     println!("End: {} {:?}", height_map.end, height_map.arena[height_map.end]);
     println!("Node count: {}", height_map.arena.len());
+
+    let mut pathfinder = Pathfinder {
+        map: height_map,
+        came_from: HashMap::new()
+    };
+    let path = pathfinder.a_star().unwrap_or(vec![]);
+    println!("Path length: {}", path.len());
 }
 
 fn load_data(path: &str) -> Result<String, Box<dyn Error>> {
@@ -33,101 +45,78 @@ fn parse_height_map(data: &str) -> Vec<Vec<char>> {
     map
 }
 
-#[derive(Debug)]
-struct HeightMap {
-    arena: Vec<Node>,
-    start: usize,
-    end: usize,
-    row_length: usize,
+struct Pathfinder {
+    map: HeightMap,
+    came_from: HashMap<usize, usize>
 }
 
-impl HeightMap {
-    pub fn new(map: Vec<Vec<char>>) -> HeightMap {
-        let mut arena: Vec<Node> = Vec::new();
-        let mut start: usize = 0;
-        let mut end: usize = 0;
-        let row_length = map[0].len();
-        for (y, row) in map.iter().enumerate() {
-            for (x, height) in row.iter().enumerate() {
-                let mut converted_height = *height;
-                if *height == 'S' {
-                    converted_height = 'a';
-                    start = y * row_length + x;
-                } else if *height == 'E' {
-                    converted_height = 'z';
-                    end = y * row_length + x;
+impl Pathfinder {
+    fn reconstruct_path(&self, current: usize) -> Vec<usize> {
+        let mut total_path = vec![current];
+        let mut current = current;
+        while self.came_from.contains_key(&current) {
+            current = self.came_from[&current];
+            total_path.push(current);
+        }
+        total_path.reverse();
+        total_path
+    }
+    
+    fn heuristic(&self, idx: usize) -> i32 {
+        let current = &self.map.arena[idx];
+        let end = &self.map.arena[self.map.end];
+        let x = (current.x as i32 - end.x as i32).pow(2);
+        let y = (current.y as i32 - end.y as i32).pow(2);
+        ((x + y) as f32).sqrt().round() as i32
+    }
+
+    pub fn a_star(&mut self) -> Option<Vec<usize>>{
+        let mut open_set = HashSet::from([self.map.start]);
+
+        // for node n g_score[n] is the cheapest path from start to n.
+        let mut g_score = HashMap::from([(self.map.start, 0)]);
+
+        // for node n f_score[n] = g_score[n] + heuristic(n)
+        // It represents the current best guess at how short a path from n to the end could be
+        let mut f_score = HashMap::from([(self.map.start, self.heuristic(self.map.start))]);
+
+        while !open_set.is_empty() {
+            let lowest_fscore = match f_score.iter().filter(|(k, _)| open_set.contains(k)).min_by_key(| a| a.1) {
+                Some((key, _)) => *key,
+                None => panic!("f_score is empty"),
+            };
+
+            let current = open_set.take(&lowest_fscore).unwrap();
+            if current == self.map.end {
+                return Some(self.reconstruct_path(current))
+            }
+
+            let node = &self.map.arena[current];
+            for neighbor in &node.neighbors {
+                let tentative_g_score = match g_score.get(&current) {
+                    Some(score) => score + 1,
+                    None => i32::MAX,
+                };
+                let neighbor_g_score = match g_score.get(neighbor) {
+                    Some(score) => *score,
+                    None => i32::MAX,
+                };
+                if tentative_g_score < neighbor_g_score {
+                    self.came_from.insert(*neighbor, current);
+                    g_score.insert(*neighbor, tentative_g_score);
+                    f_score.insert(*neighbor, tentative_g_score + self.heuristic(*neighbor));
+
+                    open_set.insert(*neighbor);
                 }
-                let node = Node::new(x, y, converted_height);
-                arena.push(node);
             }
         }
-        let mut height_map = HeightMap {
-            arena,
-            start,
-            end,
-            row_length,
-        };
-        height_map.find_neighbors();
-        height_map
-    }
-
-    pub fn find_neighbors(&mut self) {
-        for i in 0..self.arena.len() {
-            self.find_node_neighbors(i);
-        }
-    }
-
-    fn find_node_neighbors(&mut self, node: usize) {
-        let height = self.arena[node].height as i32;
-        // Check north
-        if node as i32 - self.row_length as i32 > 0 {
-            let candidate = node - self.row_length;
-            self.evaluate_neighbor(node, candidate, height);
-        }
-        // Check south
-        if node + self.row_length < self.arena.len() {
-            let candidate = node + self.row_length;
-            self.evaluate_neighbor(node, candidate, height);
-        }
-        // Check west
-        if (node % self.row_length) as i32 - 1 >= 0 {
-            let candidate = node - 1;
-            self.evaluate_neighbor(node, candidate, height);
-        }
-        // Check east
-        if node + 1 < self.arena.len() && (node % self.row_length) as i32 + 1 < self.row_length as i32 {
-            let candidate = node + 1;
-            self.evaluate_neighbor(node, candidate, height);
-        }
-    }
-
-    fn evaluate_neighbor(&mut self, node: usize, candidate: usize, height: i32) {
-        let candidate_height = self.arena[candidate].height as i32;
-        if (candidate_height - height).abs() <= 1 {
-            self.arena[node].add_neighbor(candidate);
-        }
+        None
     }
 }
 
-#[derive(Debug)]
-struct Node {
-    x: usize,
-    y: usize,
-    height: char,
-    neighbors: Vec<usize>,
-}
 
-impl Node {
-    pub fn new(x: usize, y: usize, height: char) -> Node {
-        Node {
-            x,
-            y,
-            height,
-            neighbors: Vec::new(),
-        }
-    }
+#[cfg(test)]
+mod test {
+    use super::*;
 
-    pub fn add_neighbor(&mut self, neighbor: usize) {
-        self.neighbors.push(neighbor);
-    }
 }
