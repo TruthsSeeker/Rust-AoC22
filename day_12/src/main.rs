@@ -32,6 +32,11 @@ fn part1(height_map: HeightMap) {
     println!("Path length: {}", path.len() - 1);
 }
 
+/* TODO: The brute force approach will take ages, so:
+ * - Implement concurrency to search multiple paths at once
+ * - Cache failed starts and return early from the search if one is encountered
+ */
+
 fn part2(height_map: HeightMap) {
     let potential_starts = height_map.arena.clone().iter()
         .enumerate()
