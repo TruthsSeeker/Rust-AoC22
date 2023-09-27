@@ -24,7 +24,7 @@ fn main() {
 fn part1(height_map: HeightMap) {
     let start = height_map.start.clone();
     let mut pathfinder = pathfinder::Pathfinder {
-        map: height_map,
+        map: &height_map,
         came_from: HashMap::new(),
         start: start
     };
@@ -45,9 +45,8 @@ fn part2(height_map: HeightMap) {
         .collect::<Vec<usize>>();
     let mut paths: Vec<Vec<usize>> = Vec::new();
     for start in potential_starts {
-        println!("Evaluating start {}", &start);
         let mut pathfinder = Pathfinder {
-            map: height_map.clone(),
+            map: &height_map,
             came_from: HashMap::new(),
             start
         };
@@ -56,8 +55,7 @@ fn part2(height_map: HeightMap) {
             None => continue,
         }
     }
-    paths.sort_by_key(|path| path.len());
-    println!("Shortest path {}", paths.pop().unwrap().len());
+    println!("Shortest path {}", paths.iter().map(|p| p.len()).min().unwrap() - 1);
 }
 
 fn load_data(path: &str) -> Result<String, Box<dyn Error>> {

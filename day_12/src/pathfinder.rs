@@ -4,13 +4,13 @@ use std::collections::HashMap;
 
 use crate::heightmap::HeightMap;
 
-pub(crate) struct Pathfinder {
-    pub(crate) map: HeightMap,
+pub(crate) struct Pathfinder<'a> {
+    pub(crate) map: &'a HeightMap,
     pub(crate) came_from: HashMap<usize, usize>,
     pub(crate) start: usize
 }
 
-impl Pathfinder {
+impl Pathfinder<'_> {
     pub(crate) fn reconstruct_path(&self, current: usize) -> Vec<usize> {
         let mut total_path = vec![current];
         let mut current = current;
@@ -31,14 +31,14 @@ impl Pathfinder {
     }
 
     pub fn a_star(&mut self) -> Option<Vec<usize>>{
-        let mut open_set = HashSet::from([self.map.start]);
+        let mut open_set = HashSet::from([self.start]);
 
         // for node n g_score[n] is the cheapest path from start to n.
-        let mut g_score = HashMap::from([(self.map.start, 0)]);
+        let mut g_score = HashMap::from([(self.start, 0)]);
 
         // for node n f_score[n] = g_score[n] + heuristic(n)
         // It represents the current best guess at how short a path from n to the end could be
-        let mut f_score = HashMap::from([(self.map.start, self.heuristic(self.map.start))]);
+        let mut f_score = HashMap::from([(self.start, self.heuristic(self.start))]);
 
         while !open_set.is_empty() {
             let lowest_fscore = match f_score.iter().filter(|(k, _)| open_set.contains(k)).min_by_key(| a| a.1) {
